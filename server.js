@@ -29,7 +29,7 @@ This is a generated draft about ${topic}.
 `;
 
     const lines = content.split("\n");
-    const title = lines[0]?.replace(/^#\s*/, "").trim() || Draft about ${topic};
+    const title = lines[0]?.replace(/^#\s*/, "").trim() || `Draft about ${topic}`;
     const body = content;
 
     res.json({
