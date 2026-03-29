@@ -27,7 +27,7 @@ app.get("/proof", (req, res) => {
   res.send("NEW VERSION LIVE");
 });
 
-app.post("/mcp", async (req, res) => {
+app.post("/generate-draft", async (req, res) => {
   const body = req.body;
 
   try {
@@ -175,17 +175,6 @@ app.post("/mcp", async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log("MCP server running on port " + (process.env.PORT || 3000));
 });
-
-
-
-
-
-
-
-
-
-
-
 
 
 
