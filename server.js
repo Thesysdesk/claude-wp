@@ -93,7 +93,7 @@ Return:
 
     const lines = text.split("\n").filter(Boolean);
     const title =
-      lines[0]?.replace(/^#\s*/, "").trim() || Draft about ${topic};
+      lines[0]?.replace(/^#\s*/, "").trim() || `Draft about ${topic}`;
 
     const content = text;
 
