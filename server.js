@@ -4,6 +4,8 @@ const express = require("express");
 const axios = require("axios");
 
 const app = express();
+const cors = require("cors");
+app.use(cors());
 app.use(express.json());
 
 const wp = axios.create({
@@ -173,6 +175,8 @@ app.post("/mcp", async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log("MCP server running on port " + (process.env.PORT || 3000));
 });
+
+
 
 
 
