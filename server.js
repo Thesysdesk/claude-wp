@@ -1,4 +1,3 @@
-
 require("dotenv").config();
 
 const express = require("express");
@@ -85,9 +84,11 @@ app.post("/mcp", async (req, res) => {
 
       if (name === "list_posts") {
         const response = await wp.get("/posts");
-        return res.json({
-          content: [
-            {
+         return res.json({
+          result: {
+            content: [...]
+  }
+});
               type: "text",
               text: JSON.stringify(response.data, null, 2),
             },
@@ -162,6 +163,10 @@ app.post("/mcp", async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log("MCP server running on port " + (process.env.PORT || 3000));
 });
+
+
+
+
 
 
 
