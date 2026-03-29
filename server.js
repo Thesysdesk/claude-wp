@@ -1,3 +1,4 @@
+
 require("dotenv").config();
 
 const express = require("express");
@@ -18,89 +19,150 @@ const wp = axios.create({
 });
 
 app.get("/", (req, res) => {
-  res.send("Server is running");
+  res.send("MCP server is running");
 });
 
-app.get("/proof", (req, res) => {
-  res.send("NEW VERSION LIVE");
-});
+// Basic MCP-compatible endpoint shape
+app.post("/mcp", async (req, res) => {
+  const body = req.body;
 
-
-
-app.get("/posts", async (req, res) => {
   try {
-    const response = await wp.get("/posts");
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
-  }
-});
-
-app.post("/create-draft", async (req, res) => {
-  try {
-    const { title, content } = req.body;
-
-    const response = await wp.post("/posts", {
-      title: title,
-      content: content,
-      status: "draft",
-    });
-
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
-  }
-});
-
-app.post("/update-draft", async (req, res) => {
-  try {
-    const { id, title, content } = req.body;
-
-    if (!id) {
-      return res.status(400).json({ error: "Post ID is required" });
+    // Tool discovery
+    if (body.method === "tools/list") {
+      return res.json({
+        tools: [
+          {
+            name: "list_posts",
+            description: "List recent WordPress posts",
+            input_schema: {
+              type: "object",
+              properties: {},
+            },
+          },
+          {
+            name: "create_draft",
+            description: "Create a WordPress draft post",
+            input_schema: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                content: { type: "string" }
+              },
+              required: ["title", "content"],
+            },
+          },
+          {
+            name: "update_draft",
+            description: "Update an existing WordPress draft",
+            input_schema: {
+              type: "object",
+              properties: {
+                id: { type: "number" },
+                title: { type: "string" },
+                content: { type: "string" }
+              },
+              required: ["id"],
+            },
+          },
+          {
+            name: "publish_draft",
+            description: "Publish a WordPress draft by ID",
+            input_schema: {
+              type: "object",
+              properties: {
+                id: { type: "number" }
+              },
+              required: ["id"],
+            },
+          },
+        ],
+      });
     }
 
-    const response = await wp.post("/posts/" + id, {
-      title: title,
-      content: content,
-      status: "draft",
-    });
+    // Tool execution
+    if (body.method === "tools/call") {
+      const { name, arguments: args } = body.params || {};
 
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
-  }
-});
+      if (name === "list_posts") {
+        const response = await wp.get("/posts");
+        return res.json({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.data, null, 2),
+            },
+          ],
+        });
+      }
 
-app.post("/publish-draft", async (req, res) => {
-  try {
-    const { id } = req.body;
+      if (name === "create_draft") {
+        const response = await wp.post("/posts", {
+          title: args.title,
+          content: args.content,
+          status: "draft",
+        });
 
-    if (!id) {
-      return res.status(400).json({ error: "Post ID is required" });
+        return res.json({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.data, null, 2),
+            },
+          ],
+        });
+      }
+
+      if (name === "update_draft") {
+        const response = await wp.post("/posts/" + args.id, {
+          title: args.title,
+          content: args.content,
+          status: "draft",
+        });
+
+        return res.json({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.data, null, 2),
+            },
+          ],
+        });
+      }
+
+      if (name === "publish_draft") {
+        const response = await wp.post("/posts/" + args.id, {
+          status: "publish",
+        });
+
+        return res.json({
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(response.data, null, 2),
+            },
+          ],
+        });
+      }
+
+      return res.status(400).json({
+        error: "Unknown tool",
+      });
     }
 
-    const response = await wp.post("/posts/" + id, {
-      status: "publish",
+    return res.status(400).json({
+      error: "Unsupported MCP method",
     });
-
-    res.json(response.data);
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: error.response?.data || error.message,
     });
   }
 });
 
 app.listen(process.env.PORT || 3000, () => {
-  console.log("Server running on port " + (process.env.PORT || 3000));
+  console.log("MCP server running on port " + (process.env.PORT || 3000));
 });
+
 
 
 
