@@ -1,66 +1,17 @@
-require("dotenv").config();
-
-const express = require("express");
-const cors = require("cors");
-const axios = require("axios");
-const Anthropic = require("@anthropic-ai/sdk");
+import express from "express";
+import fetch from "node-fetch";
 
 const app = express();
-app.use(cors());
 app.use(express.json());
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const PORT = process.env.PORT || 3000;
 
-const wp = axios.create({
-  baseURL: process.env.WP_URL + "/wp-json/wp/v2",
-  auth: {
-    username: process.env.WP_USERNAME,
-    password: process.env.WP_APP_PASSWORD,
-  },
-  headers: {
-    "Content-Type": "application/json",
-  },
-});
-
+// Health check route
 app.get("/", (req, res) => {
   res.send("Claude + WordPress server is running");
 });
 
-app.get("/proof", (req, res) => {
-  res.send("NEW VERSION LIVE");
-});
-
-app.get("/posts", async (req, res) => {
-  try {
-    const response = await wp.get("/posts");
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
-  }
-});
-
-app.post("/create-draft", async (req, res) => {
-  try {
-    const { title, content } = req.body;
-
-    const response = await wp.post("/posts", {
-      title,
-      content,
-      status: "draft",
-    });
-
-    res.json(response.data);
-  } catch (error) {
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
-  }
-});
-
+// Generate draft route
 app.post("/generate-draft", async (req, res) => {
   try {
     const { topic } = req.body;
@@ -69,64 +20,37 @@ app.post("/generate-draft", async (req, res) => {
       return res.status(400).json({ error: "Topic is required" });
     }
 
-    const msg = await anthropic.messages.create({
-      model: "claude-opus-4-6",
-      max_tokens: 1200,
-      messages: [
-        {
-          role: "user",
-          content: `Write a WordPress blog post draft about: ${topic}.
+    // Simple mock content (you can replace with Claude later)
+    const content = `# ${topic}
 
-Return:
-1. A strong title on the first line
-2. Then the article body in clean HTML paragraphs
-Keep it practical and publishable.`,
-        },
-      ],
-    });
+This is a generated draft about ${topic}.
 
-    const text = msg.content
-      .filter((block) => block.type === "text")
-      .map((block) => block.text)
-      .join("\n")
-      .trim();
+- Point 1 about ${topic}
+- Point 2 about ${topic}
+- Point 3 about ${topic}
+`;
 
-    const lines = text.split("\n").filter(Boolean);
+    const lines = content.split("\n");
+
     const title =
       lines[0]?.replace(/^#\s*/, "").trim() || Draft about ${topic};
-    const content = text;
 
-    const wpResponse = await wp.post("/posts", {
-      title,
-      content,
-      status: "draft",
-    });
+    const body = content;
 
     res.json({
-      message: "Draft created successfully",
-      post: wpResponse.data,
+      title,
+      content: body,
     });
   } catch (error) {
-    res.status(500).json({
-      error: error.response?.data || error.message,
-    });
+    console.error(error);
+    res.status(500).json({ error: "Something went wrong" });
   }
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log(
-    "Claude + WordPress server running on port " +
-      (process.env.PORT || 3000)
-  );
+// Start server
+app.listen(PORT, () => {
+  console.log(Server running on port ${PORT});
 });
-
-
-
-
-
-
-
-
 
 
 
