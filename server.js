@@ -21,6 +21,12 @@ app.get("/", (req, res) => {
   res.send("Server is running");
 });
 
+app.get("/proof", (req, res) => {
+  res.send("NEW VERSION LIVE");
+});
+
+
+
 app.get("/posts", async (req, res) => {
   try {
     const response = await wp.get("/posts");
