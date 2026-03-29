@@ -21,7 +21,10 @@ app.get("/", (req, res) => {
   res.send("MCP server is running");
 });
 
-// Basic MCP-compatible endpoint shape
+app.get("/proof", (req, res) => {
+  res.send("NEW VERSION LIVE");
+});
+
 app.post("/mcp", async (req, res) => {
   const body = req.body;
 
@@ -35,8 +38,8 @@ app.post("/mcp", async (req, res) => {
             description: "List recent WordPress posts",
             input_schema: {
               type: "object",
-              properties: {},
-            },
+              properties: {}
+            }
           },
           {
             name: "create_draft",
@@ -47,8 +50,8 @@ app.post("/mcp", async (req, res) => {
                 title: { type: "string" },
                 content: { type: "string" }
               },
-              required: ["title", "content"],
-            },
+              required: ["title", "content"]
+            }
           },
           {
             name: "update_draft",
@@ -60,8 +63,8 @@ app.post("/mcp", async (req, res) => {
                 title: { type: "string" },
                 content: { type: "string" }
               },
-              required: ["id"],
-            },
+              required: ["id"]
+            }
           },
           {
             name: "publish_draft",
@@ -71,10 +74,10 @@ app.post("/mcp", async (req, res) => {
               properties: {
                 id: { type: "number" }
               },
-              required: ["id"],
-            },
-          },
-        ],
+              required: ["id"]
+            }
+          }
+        ]
       });
     }
 
@@ -84,15 +87,16 @@ app.post("/mcp", async (req, res) => {
 
       if (name === "list_posts") {
         const response = await wp.get("/posts");
-         return res.json({
+
+        return res.json({
           result: {
-            content: [...]
-  }
-});
-              type: "text",
-              text: JSON.stringify(response.data, null, 2),
-            },
-          ],
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.data, null, 2)
+              }
+            ]
+          }
         });
       }
 
@@ -100,16 +104,18 @@ app.post("/mcp", async (req, res) => {
         const response = await wp.post("/posts", {
           title: args.title,
           content: args.content,
-          status: "draft",
+          status: "draft"
         });
 
         return res.json({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response.data, null, 2),
-            },
-          ],
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.data, null, 2)
+              }
+            ]
+          }
         });
       }
 
@@ -117,45 +123,49 @@ app.post("/mcp", async (req, res) => {
         const response = await wp.post("/posts/" + args.id, {
           title: args.title,
           content: args.content,
-          status: "draft",
+          status: "draft"
         });
 
         return res.json({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response.data, null, 2),
-            },
-          ],
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.data, null, 2)
+              }
+            ]
+          }
         });
       }
 
       if (name === "publish_draft") {
         const response = await wp.post("/posts/" + args.id, {
-          status: "publish",
+          status: "publish"
         });
 
         return res.json({
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(response.data, null, 2),
-            },
-          ],
+          result: {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(response.data, null, 2)
+              }
+            ]
+          }
         });
       }
 
       return res.status(400).json({
-        error: "Unknown tool",
+        error: "Unknown tool"
       });
     }
 
     return res.status(400).json({
-      error: "Unsupported MCP method",
+      error: "Unsupported MCP method"
     });
   } catch (error) {
     return res.status(500).json({
-      error: error.response?.data || error.message,
+      error: error.response?.data || error.message
     });
   }
 });
@@ -163,6 +173,9 @@ app.post("/mcp", async (req, res) => {
 app.listen(process.env.PORT || 3000, () => {
   console.log("MCP server running on port " + (process.env.PORT || 3000));
 });
+
+
+
 
 
 
