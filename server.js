@@ -1,12 +1,17 @@
 require("dotenv").config();
 
 const express = require("express");
+const cors = require("cors");
 const axios = require("axios");
+const Anthropic = require("@anthropic-ai/sdk");
 
 const app = express();
-const cors = require("cors");
 app.use(cors());
 app.use(express.json());
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 const wp = axios.create({
   baseURL: process.env.WP_URL + "/wp-json/wp/v2",
@@ -20,169 +25,100 @@ const wp = axios.create({
 });
 
 app.get("/", (req, res) => {
-  res.send("MCP server is running");
+  res.send("Claude + WordPress server is running");
 });
 
 app.get("/proof", (req, res) => {
   res.send("NEW VERSION LIVE");
 });
 
-app.post("/generate-draft", async (req, res) => {
-  const body = req.body;
-
+app.get("/posts", async (req, res) => {
   try {
-    // Tool discovery
-    if (body.method === "tools/list") {
-      return res.json({
-        tools: [
-          {
-            name: "list_posts",
-            description: "List recent WordPress posts",
-            input_schema: {
-              type: "object",
-              properties: {}
-            }
-          },
-          {
-            name: "create_draft",
-            description: "Create a WordPress draft post",
-            input_schema: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                content: { type: "string" }
-              },
-              required: ["title", "content"]
-            }
-          },
-          {
-            name: "update_draft",
-            description: "Update an existing WordPress draft",
-            input_schema: {
-              type: "object",
-              properties: {
-                id: { type: "number" },
-                title: { type: "string" },
-                content: { type: "string" }
-              },
-              required: ["id"]
-            }
-          },
-          {
-            name: "publish_draft",
-            description: "Publish a WordPress draft by ID",
-            input_schema: {
-              type: "object",
-              properties: {
-                id: { type: "number" }
-              },
-              required: ["id"]
-            }
-          }
-        ]
-      });
+    const response = await wp.get("/posts");
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      error: error.response?.data || error.message,
+    });
+  }
+});
+
+app.post("/create-draft", async (req, res) => {
+  try {
+    const { title, content } = req.body;
+
+    const response = await wp.post("/posts", {
+      title,
+      content,
+      status: "draft",
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      error: error.response?.data || error.message,
+    });
+  }
+});
+
+app.post("/generate-draft", async (req, res) => {
+  try {
+    const { topic } = req.body;
+
+    if (!topic) {
+      return res.status(400).json({ error: "Topic is required" });
     }
 
-    // Tool execution
-    if (body.method === "tools/call") {
-      const { name, arguments: args } = body.params || {};
+    const msg = await anthropic.messages.create({
+      model: "claude-opus-4-6",
+      max_tokens: 1200,
+      messages: [
+        {
+          role: "user",
+          content: `Write a WordPress blog post draft about: ${topic}.
 
-      if (name === "list_posts") {
-        const response = await wp.get("/posts");
+Return:
+1. A strong title on the first line
+2. Then the article body in clean HTML paragraphs
+Keep it practical and publishable.`,
+        },
+      ],
+    });
 
-        return res.json({
-          result: {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.data, null, 2)
-              }
-            ]
-          }
-        });
-      }
+    const text = msg.content
+      .filter((block) => block.type === "text")
+      .map((block) => block.text)
+      .join("\n")
+      .trim();
 
-      if (name === "create_draft") {
-        const response = await wp.post("/posts", {
-          title: args.title,
-          content: args.content,
-          status: "draft"
-        });
+    const lines = text.split("\n").filter(Boolean);
+    const title =
+      lines[0]?.replace(/^#\s*/, "").trim() || Draft about ${topic};
+    const content = text;
 
-        return res.json({
-          result: {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.data, null, 2)
-              }
-            ]
-          }
-        });
-      }
+    const wpResponse = await wp.post("/posts", {
+      title,
+      content,
+      status: "draft",
+    });
 
-      if (name === "update_draft") {
-        const response = await wp.post("/posts/" + args.id, {
-          title: args.title,
-          content: args.content,
-          status: "draft"
-        });
-
-        return res.json({
-          result: {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.data, null, 2)
-              }
-            ]
-          }
-        });
-      }
-
-      if (name === "publish_draft") {
-        const response = await wp.post("/posts/" + args.id, {
-          status: "publish"
-        });
-
-        return res.json({
-          result: {
-            content: [
-              {
-                type: "text",
-                text: JSON.stringify(response.data, null, 2)
-              }
-            ]
-          }
-        });
-      }
-
-      return res.status(400).json({
-        error: "Unknown tool"
-      });
-    }
-
-    return res.status(400).json({
-      error: "Unsupported MCP method"
+    res.json({
+      message: "Draft created successfully",
+      post: wpResponse.data,
     });
   } catch (error) {
-    return res.status(500).json({
-      error: error.response?.data || error.message
+    res.status(500).json({
+      error: error.response?.data || error.message,
     });
   }
 });
 
 app.listen(process.env.PORT || 3000, () => {
-  console.log("MCP server running on port " + (process.env.PORT || 3000));
+  console.log(
+    "Claude + WordPress server running on port " +
+      (process.env.PORT || 3000)
+  );
 });
-
-
-
-
-
-
-
-
 
 
 
