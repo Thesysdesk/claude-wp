@@ -17,9 +17,19 @@ const wp = axios.create({
   },
 });
 
-
 app.get("/", (req, res) => {
   res.send("Server is running");
+});
+
+app.get("/posts", async (req, res) => {
+  try {
+    const response = await wp.get("/posts");
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      error: error.response?.data || error.message,
+    });
+  }
 });
 
 app.post("/create-draft", async (req, res) => {
@@ -40,12 +50,51 @@ app.post("/create-draft", async (req, res) => {
   }
 });
 
+app.post("/update-draft", async (req, res) => {
+  try {
+    const { id, title, content } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: "Post ID is required" });
+    }
+
+    const response = await wp.post("/posts/" + id, {
+      title: title,
+      content: content,
+      status: "draft",
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      error: error.response?.data || error.message,
+    });
+  }
+});
+
+app.post("/publish-draft", async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: "Post ID is required" });
+    }
+
+    const response = await wp.post("/posts/" + id, {
+      status: "publish",
+    });
+
+    res.json(response.data);
+  } catch (error) {
+    res.status(500).json({
+      error: error.response?.data || error.message,
+    });
+  }
+});
+
 app.listen(process.env.PORT || 3000, () => {
   console.log("Server running on port " + (process.env.PORT || 3000));
 });
-
-
-
 
 
 
